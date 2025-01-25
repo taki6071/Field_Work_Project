@@ -1,0 +1,85 @@
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import db_connection
+import news_insert
+
+# URL of the page to scrape
+url = 'https://thefinancialexpress.com.bd/trade'
+
+# Send a GET request to fetch the HTML content
+response = requests.get(url)
+soup = BeautifulSoup(response.content, 'html.parser')
+
+# Find all article links within the <a> tags under the <article> tags
+articles = soup.find_all('article')
+
+# Base URL for constructing full article links
+base_url = 'https://thefinancialexpress.com.bd'
+conn = db_connection.create_db_connection()
+for article in articles:
+    link = article.find('a', href=True)
+    if link:
+        print(link)
+        article_link = base_url + link['href']
+        article_response = requests.get(article_link)
+        article_soup = BeautifulSoup(article_response.content, 'html.parser')
+        # Extract the article title (from the <h1> tag)
+        title_tag = article_soup.find('h1')
+        title = title_tag.get_text() if title_tag else 'No Title'
+
+        # Extract the article description (usually in the <article> or <p> tags)
+        description_tag = article_soup.find('article')
+        description = description_tag.get_text() if description_tag else 'No Description'
+
+        print(title, description)
+        # news_insert.insert_author(conn, name, email)
+        # need another query to get the author id from database 
+        # news_insert.insert_news(connection=conn, category_id=1, author_id=1, editor_id=1, datetime=datetime.now(), title=title, body=description, link=article_link)
+When the code execute the loop for all articles there is a another url scaping using the follwing code:
+article_link = base_url + link['href']
+article_response = requests.get(article_link)
+For particular news we want to scaping only first article 
+
+
+
+
+
+
+
+main.py
+from fastapi import FastAPI
+import uvicorn
+
+from app.routers import news, summary
+
+# app = FastAPI()
+
+app = FastAPI(
+    title="AI based News Summary API",
+    version="0.2",
+    description="This is the API documentation for News Summary generating by AI.",
+    # terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Irfan Chowdhury",
+      
+        "email": "irfanchowdhurycr7@gmail.com",
+    },
+    # license_info = {
+    #     "name": "MIT License",
+    #     "url": "https://opensource.org/licenses/MIT",
+    # },
+    redoc_url="/documentation",
+    docs_url="/try-out",
+)
+
+app.include_router(news.router)
+app.include_router(summary.router)
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the News Summary API"}
+
+if __name__ == "__main__":
+    # uvicorn.run("main:app", host="localhost", port=8001, reload=True)
+    uvicorn.run("main:app", host="localhost", port=8011, reload=True)
